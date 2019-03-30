@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 
 # lets write our own pandas caching utility
+# rip it doeesn't work
 def cache_dataframe(original_function):
     def make_cache_dataframe_op():
         cache_dir = Path('./cache')
@@ -18,10 +19,7 @@ def cache_dataframe(original_function):
         return retVal
     return make_cache_dataframe_op
 
-#@cache_dataframe
-def collect_data():
-    COUNTY_DATA_SOURCE_FILENAME = "cbp16co.zip"
-    COUNTY_DATA_SOURCE = "https://www2.census.gov/programs-surveys/cbp/datasets/2016/" + COUNTY_DATA_SOURCE_FILENAME + "?#"
+def collect_data(data_source, data_source_filename):
     COUNTY_DATA_INFO_SOURCE = "https://www2.census.gov/programs-surveys/rhfs/cbp/technical%20documentation/2015_record_layouts/county_layout_2015.txt?#"
     COUNTY_DISTANCES_SOURCE_FILENAME = "sf12010countydistance100miles.csv.zip"
     COUNTY_DISTANCES_SOURCE = "https://www.nber.org/distance/2010/sf1/county/" + COUNTY_DISTANCES_SOURCE_FILENAME
@@ -31,7 +29,7 @@ def collect_data():
     assets_dir.mkdir(exist_ok=True)
     # you can do this with the paths library!
     for filename, source in [
-        (COUNTY_DATA_SOURCE_FILENAME, COUNTY_DATA_SOURCE),
+        (data_source_filename, data_source),
         (COUNTY_DISTANCES_SOURCE_FILENAME, COUNTY_DISTANCES_SOURCE),
         (COUNTY_NAMES_FILENAME, COUNTY_NAMES_SOURCE)
     ]:
@@ -57,7 +55,7 @@ def collect_data():
         industrial_classifications[result[:space_idx]] = result[space_idx + 1]
     print("Sectoral classification parsing completed")
     print(industrial_classifications)
-    full_data = pd.read_csv(str(assets_dir / COUNTY_DATA_SOURCE_FILENAME))
+    full_data = pd.read_csv(str(assets_dir / data_source_filename))
     # data cleaning
     # only use if current results are no good
     # full_data.drop(full_data[(full_data['empflag'] == 'S') | (full_data['emp_nf'] == 'D')], inplace=True, axis=0)
@@ -92,7 +90,6 @@ def collect_data():
 
     # change to left merge if you want aggregate statistics (state, national)
     full_data = full_data.merge(names, how='inner', left_on=['fipstate', 'fipscty'], right_on=['fipstate', 'fipscty'], suffixes=(False, False), copy=False, validate='m:1')
-    print(full_data)
 
     def estimate_employment_if_nonexistant(row):
         row_elem = row['empflag']
@@ -137,74 +134,106 @@ def collect_data():
     print("cleaning done!")
     return full_data
 
-full_data = collect_data()
+from contextlib import redirect_stdout
+def cache_results(f):
+    def wrapped(*args, **kw):
+        assets_dir = Path('./results')
+        assets_dir.mkdir(exist_ok=True)
+        target_dir = assets_dir/(str(args[1]) + ".txt")
+        result = None
+        if target_dir.exists():
+            with target_dir.open() as target_file:
+                result = target_file.read()
+        with target_dir.open(mode='w') as target_file:
+            with redirect_stdout(target_file):
+                f(*args, **kw)
+        with target_dir.open() as target_file:
+            result = target_file.read()
+        print(result)
+        return
+    return wrapped
 
-# for now, looking for closest to balanced between these sectors as possible
-# essentially, this means that we want the county to have an even split with the majority of its workforce between
-# C, M, and T totals
-# only going per-county right now
+def make_summary(data_source, data_source_filename):
+    full_data = collect_data(data_source, data_source_filename)
 
-# keys that are just going to uniquely follow us around
-common_merge_keys = ['fipstate', 'fipscty', 'ctyname']
+    # for now, looking for closest to balanced between these sectors as possible
+    # essentially, this means that we want the county to have an even split with the majority of its workforce between
+    # C, M, and T totals
+    # only going per-county right now
 
-exposure_data = pd.DataFrame()
-exposure_data = full_data.groupby(['exposure'] + common_merge_keys, as_index=False).sum()
+    # keys that are just going to uniquely follow us around
+    common_merge_keys = ['fipstate', 'fipscty', 'ctyname']
 
-print("Exposure data")
-with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False):
-    print(exposure_data)
+    exposure_data = pd.DataFrame()
+    exposure_data = full_data.groupby(['exposure'] + common_merge_keys, as_index=False).sum()
 
-tariffed_data = exposure_data.loc[exposure_data['exposure'] == 'T']
-competitive_data = exposure_data.loc[exposure_data['exposure'] == 'C']
-monopoly_data = exposure_data.loc[exposure_data['exposure'] == 'M']
-total_data = exposure_data.loc[exposure_data['exposure'] == '']
+    tariffed_data = exposure_data.loc[exposure_data['exposure'] == 'T']
+    competitive_data = exposure_data.loc[exposure_data['exposure'] == 'C']
+    monopoly_data = exposure_data.loc[exposure_data['exposure'] == 'M']
+    total_data = exposure_data.loc[exposure_data['exposure'] == '']
 
-# now compose data into large frame
-simplified_exposure_data = total_data.merge(tariffed_data, 'outer', on=common_merge_keys, suffixes=("_total", "_tariffed"), validate='1:1')
-simplified_exposure_data = simplified_exposure_data.merge(competitive_data, 'outer', on=common_merge_keys, suffixes=(None, "_competitive"), copy=False, validate='1:1')
-simplified_exposure_data = simplified_exposure_data.merge(monopoly_data, 'outer', on=common_merge_keys, suffixes=("_competitive", "_monopoly"), copy=False, validate='1:1')
+    # now compose data into large frame
+    simplified_exposure_data = total_data.merge(tariffed_data, 'outer', on=common_merge_keys, suffixes=("_total", "_tariffed"), validate='1:1')
+    simplified_exposure_data = simplified_exposure_data.merge(competitive_data, 'outer', on=common_merge_keys, suffixes=(None, "_competitive"), copy=False, validate='1:1')
+    simplified_exposure_data = simplified_exposure_data.merge(monopoly_data, 'outer', on=common_merge_keys, suffixes=("_competitive", "_monopoly"), copy=False, validate='1:1')
 
-# great, we now have exposure data
-# we now have to figure out hwo close each one of these counties comes to aggregate numbers (balanced)
-exposure_employment_data = simplified_exposure_data[["emp_total", "emp_tariffed", "emp_competitive", "emp_monopoly"] + common_merge_keys]
+    # great, we now have exposure data
+    # we now have to figure out hwo close each one of these counties comes to aggregate numbers (balanced)
+    exposure_employment_data = simplified_exposure_data[["emp_total", "emp_tariffed", "emp_competitive", "emp_monopoly"] + common_merge_keys]
 
-# defined as closest fitness to the model I have in mind
-# "biggest employers in town" curve probably looks something like x^2
-# the rest is just based on a relatively even split - probably just MSE from mean
-# TODO: ML on past stuff?
-def county_loss_func(row):
-    total = row["emp_total"]
-    tariffed = row["emp_tariffed"]
-    if np.isnan(tariffed):
-        tariffed = 0
-    competitive = row["emp_competitive"]
-    if np.isnan(competitive):
-        competitive = 0
-    monopoly = row["emp_monopoly"]
-    if np.isnan(monopoly):
-        monopoly = 0
+    # defined as closest fitness to the model I have in mind
+    # "biggest employers in town" curve probably looks something like x^2
+    # the rest is just based on a relatively even split - probably just MSE from mean
+    # TODO: ML on past stuff?
+    def county_loss_func(row):
+        total = row["emp_total"]
+        tariffed = row["emp_tariffed"]
+        if np.isnan(tariffed):
+            tariffed = 0
+        competitive = row["emp_competitive"]
+        if np.isnan(competitive):
+            competitive = 0
+        monopoly = row["emp_monopoly"]
+        if np.isnan(monopoly):
+            monopoly = 0
 
-    relevant_categories = [tariffed, competitive, monopoly]
-    relevant_employment = sum(relevant_categories)
+        relevant_categories = [tariffed, competitive, monopoly]
+        relevant_employment = sum(relevant_categories)
 
-    # penalty for not being an ideal town with only these three types of employment
-    size_penalty = relevant_employment / total
-    if tariffed == 0 or competitive == 0 or monopoly == 0:
-        size_penalty = np.infty
+        # penalty for not being an ideal town with only these three types of employment
+        size_penalty = relevant_employment / total
+        if tariffed == 0 or competitive == 0 or monopoly == 0:
+            size_penalty = np.infty
 
-    # penalty for not being evenly initially distributed between these three things. Right now, MSE
-    distribution_penalty = sum( [(x - (total / 3))**2 for x in relevant_categories])
+        # penalty for not being evenly initially distributed between these three things. Right now, MSE
+        distribution_penalty = sum( [(x - (total / 3))**2 for x in relevant_categories])
 
-    # Add - don't want one to cancel out the other
-    # TODO: Test coefficients?
-    penalty = (1.0 + size_penalty) * distribution_penalty
-    return penalty
+        # Add - don't want one to cancel out the other
+        # TODO: Test coefficients?
+        penalty = (1.0 + size_penalty) * distribution_penalty
+        return penalty
 
 
-exposure_employment_data["loss"] = exposure_employment_data.apply(county_loss_func, axis=1)
-# exclude all with a fitness of zero
-exposure_employment_data.sort_values(by=['loss'], inplace=True, axis=0)
+    exposure_employment_data["loss"] = exposure_employment_data.apply(county_loss_func, axis=1)
+    # exclude all with a fitness of zero
+    exposure_employment_data.sort_values(by=['loss'], inplace=True, axis=0)
 
-# https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.set_option.html
-with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False, 'display.max_rows', 200):
-    print(exposure_employment_data)
+    # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.set_option.html
+    with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False, 'display.max_rows', 200):
+        print(exposure_employment_data)
+
+
+# Make a summary of an industry given a CBP datasets thingy
+COUNTY_DATA_SOURCE_2016_FILENAME = "cbp16co.zip"
+COUNTY_DATA_SOURCE_2016 = "https://www2.census.gov/programs-surveys/cbp/datasets/2016/" + COUNTY_DATA_SOURCE_2016_FILENAME + "?#"
+
+COUNTY_DATA_SOURCE_2002_FILENAME = "cbp02co.zip"
+COUNTY_DATA_SOURCE_2002 = "https://www2.census.gov/programs-surveys/cbp/datasets/2002/" + COUNTY_DATA_SOURCE_2002_FILENAME + "?#"
+
+COUNTY_DATA_SOURCE_2005_FILENAME = "cbp05co.zip"
+COUNTY_DATA_SOURCE_2005 = "https://www2.census.gov/programs-surveys/cbp/datasets/2005/" + COUNTY_DATA_SOURCE_2005_FILENAME + "?#"
+
+
+make_summary(COUNTY_DATA_SOURCE_2016, COUNTY_DATA_SOURCE_2016_FILENAME)
+#make_summary(COUNTY_DATA_SOURCE_2002, COUNTY_DATA_SOURCE_2002_FILENAME)
+#make_summary(COUNTY_DATA_SOURCE_2005, COUNTY_DATA_SOURCE_2005_FILENAME)
