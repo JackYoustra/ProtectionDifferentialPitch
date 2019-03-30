@@ -2,7 +2,6 @@
 # format: NICS (can be partial code) followed by whether protected (t), not protective competitive (c), or not protected monopoly (m)
 
 325 C #ChemManufacturing
-331 C #PrimaryMetalManufacturing
 322 C #PaperManufacturing
 315 C #ApparelManufacturing
 314 C #TextileProductMills
@@ -24,7 +23,7 @@
 334510 T #LaserEquipment
 335912 T #PrimaryBatteryManufacturing
 332410 T #NuclearReactorManufacturing
-312 #BeverageTobaccoProductManufacturing
+312 T #BeverageTobaccoProductManufacturing
 335220 T #WashingMachineManufacturing
 316210 T #FootwearManufacturing
 
