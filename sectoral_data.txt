@@ -7,7 +7,7 @@
 315 C #ApparelManufacturing
 314 C #TextileProductMills
 111331 C #AppleOrchards
-
+44523 C #FruitAndVegetable
 3366 C #ShipAndBoatBuilding
 
 # thesis: aircraft and related missile components aren't internationally competitive,
@@ -16,8 +16,15 @@
 336414 M #GuidedMissileAndSpaceVehicleManufacturing
 336415 M #GuidedMissileAndSpaceVehiclePropulsionUnitManufacturing
 336419 M #OtherGuidedMissileAndSpaceVehiclePartsManufacturing
-42494 M #Tobacco and Tobacco Product Merchant Wholesalers
+42494 M #TobaccoandTobaccoProductMerchantWholesalers
+3254 M #PharmaManufacturing
 
 # steel is obviously tariffed
 331 T #PrimaryMetalManufacturing
+334510 T #LaserEquipment
+335912 T #PrimaryBatteryManufacturing
+332410 T #NuclearReactorManufacturing
+312 #BeverageTobaccoProductManufacturing
+335220 T #WashingMachineManufacturing
+316210 T #FootwearManufacturing
 
