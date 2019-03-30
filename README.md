@@ -9,7 +9,7 @@ for the motivation behind this pitch.
 ## Things to improve
 ### Coding
  - County boundaries are hard borders. Make these more flexible with a falloff over county distances.
- - No validation years nor mechanism (would be nice to validate on 2000 tire tariffs that employment change occurs).
+ - No validation years nor mechanism (would be nice to validate on 2000 steel tariffs that employment change occurs).
  - Make sectoral data come with its year to facilitate downloading the proper survey dataset for businesses.
 ### Non-Coding
  - Sectoral data is incomplete. Try to improve.
