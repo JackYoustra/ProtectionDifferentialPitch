@@ -1,0 +1,21 @@
+# refer to this document: https://www.census.gov/eos/www/naics/2017NAICS/2017_NAICS_Manual.pdf
+# format: NICS (can be partial code) followed by whether protected (t), not protective competitive (c), or not protected monopoly (m)
+
+325 C
+331 C
+322 C
+315 C
+314 C
+
+3366 C
+
+# thesis: aircraft and related missile components aren't internationally competitive,
+# should see relative domestic price advantage
+336411 M
+336414 M
+336415 M
+336419 M
+
+# steel is obviously tariffed
+331 T
+
