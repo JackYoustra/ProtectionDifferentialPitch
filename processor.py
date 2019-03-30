@@ -40,7 +40,7 @@ def collect_data(data_source, data_source_filename):
     # parse information file
     # table of protected, competitive, and monopolistic sectors
     text_data = None
-    with open("sectoral_data.txt", 'r') as sectoral_data_file:
+    with open("sectoral_data_16.txt", 'r') as sectoral_data_file:
         text_data = sectoral_data_file.read()
     import re
     # prefix matcher
