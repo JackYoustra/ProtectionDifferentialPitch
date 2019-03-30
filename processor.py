@@ -44,5 +44,43 @@ for match in re.finditer(LABOR_CODE_MATCHER, text_data):
     space_idx = result.index(' ')
     industrial_classifications[result[:space_idx]] = result[space_idx + 1]
 
-print("Completely parsed file")
+print("Sectoral classification parsing completed")
 print(industrial_classifications)
+
+import pandas as pd
+import numpy as np
+
+full_data = pd.read_csv(str(assets_dir/COUNTY_DATA_SOURCE_FILENAME))
+
+# data cleaning
+# only use if current results are no good
+# full_data.drop(full_data[(full_data['empflag'] == 'S') | (full_data['emp_nf'] == 'D')], inplace=True)
+
+# only concerned about our industries and total employment
+TOTAL_EMPLOYMENT_NAICS_FLAG = '------'
+
+industrial_prefixes = np.empty(len(full_data['naics']), dtype=bool)
+
+i = 0
+for naic in full_data['naics']:
+    found = False
+    for key in industrial_classifications.keys():
+        if naic.startswith(key):
+            found = True
+            break
+    industrial_prefixes[i] = found
+    i += 1
+
+industrial_prefixes = pd.Series(industrial_prefixes)
+
+print(industrial_prefixes)
+print('-----------------------------------------------------------')
+print(full_data['naics'] == TOTAL_EMPLOYMENT_NAICS_FLAG)
+
+full_data.drop(full_data[(full_data['naics'] != TOTAL_EMPLOYMENT_NAICS_FLAG) & ~industrial_prefixes].index, inplace=True, axis=0)
+
+print(full_data)
+
+print("cleaning done!")
+# for now, looking for closest to balanced between these sectors as possible
+# only going per-county right now
