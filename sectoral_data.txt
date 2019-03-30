@@ -6,6 +6,7 @@
 322 C #PaperManufacturing
 315 C #ApparelManufacturing
 314 C #TextileProductMills
+111331 C #AppleOrchards
 
 3366 C #ShipAndBoatBuilding
 
@@ -15,6 +16,7 @@
 336414 M #GuidedMissileAndSpaceVehicleManufacturing
 336415 M #GuidedMissileAndSpaceVehiclePropulsionUnitManufacturing
 336419 M #OtherGuidedMissileAndSpaceVehiclePartsManufacturing
+42494 M #Tobacco and Tobacco Product Merchant Wholesalers
 
 # steel is obviously tariffed
 331 T #PrimaryMetalManufacturing
