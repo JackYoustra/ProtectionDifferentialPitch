@@ -60,22 +60,23 @@ full_data = pd.read_csv(str(assets_dir/COUNTY_DATA_SOURCE_FILENAME))
 TOTAL_EMPLOYMENT_NAICS_FLAG = '------'
 
 industrial_prefixes = np.empty(len(full_data['naics']), dtype=bool)
+industrial_type = np.empty(len(full_data['naics']), dtype=str)
 
 i = 0
 for naic in full_data['naics']:
     found = False
-    for key in industrial_classifications.keys():
+    for key, value in industrial_classifications.items():
         if naic.startswith(key):
             found = True
+            industrial_type[i] = value
             break
     industrial_prefixes[i] = found
     i += 1
 
 industrial_prefixes = pd.Series(industrial_prefixes)
 
+full_data['exposure'] = industrial_type
 full_data.drop(full_data[(full_data['naics'] != TOTAL_EMPLOYMENT_NAICS_FLAG) & ~industrial_prefixes].index, inplace=True, axis=0)
-
-print(full_data)
 
 def estimate_employment_if_nonexistant(row):
     row_elem = row['empflag']
@@ -119,8 +120,27 @@ def estimate_employment_if_nonexistant(row):
 # now we want to guess at the class size for a given field if not given in employment numbers
 full_data['emp'] = full_data.apply(estimate_employment_if_nonexistant, axis=1)
 
-print(full_data)
-
 print("cleaning done!")
 # for now, looking for closest to balanced between these sectors as possible
+# essentially, this means that we want the county to have an even split with the majority of its workforce between
+# C, M, and T totals
 # only going per-county right now
+
+exposure_data = pd.DataFrame()
+exposure_data = full_data.groupby(['exposure', 'fipstate', 'fipscty'], as_index=False).sum()
+
+tariffed_data = exposure_data.loc[exposure_data['exposure'] == 'T']
+competitive_data = exposure_data.loc[exposure_data['exposure'] == 'C']
+monopoly_data = exposure_data.loc[exposure_data['exposure'] == 'M']
+total_data = exposure_data.loc[exposure_data['exposure'] == '']
+
+# now compose data into large frame
+simplified_exposure_data = total_data.merge(tariffed_data, 'outer', on=["fipstate", "fipscty"], suffixes=("_total", "_tariffed"), validate='1:1')
+simplified_exposure_data = simplified_exposure_data.merge(competitive_data, 'outer', on=["fipstate", "fipscty"], suffixes=(None, "_competitive"), copy=False, validate='1:1')
+simplified_exposure_data = simplified_exposure_data.merge(monopoly_data, 'outer', on=["fipstate", "fipscty"], suffixes=(None, "_monopoly"), copy=False, validate='1:1')
+print(simplified_exposure_data)
+
+# great, we now have exposure data
+# we now have to figure out hwo close each one of these counties comes to aggregate numbers (balanced)
+
+
