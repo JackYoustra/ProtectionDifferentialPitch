@@ -219,7 +219,7 @@ def make_summary(data_source, data_source_filename):
     exposure_employment_data.sort_values(by=['loss'], inplace=True, axis=0)
 
     # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.set_option.html
-    with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False, 'display.max_rows', 200):
+    with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False, 'display.max_rows', 100000):
         print(exposure_employment_data)
 
 
