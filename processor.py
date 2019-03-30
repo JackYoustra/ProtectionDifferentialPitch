@@ -54,7 +54,7 @@ full_data = pd.read_csv(str(assets_dir/COUNTY_DATA_SOURCE_FILENAME))
 
 # data cleaning
 # only use if current results are no good
-# full_data.drop(full_data[(full_data['empflag'] == 'S') | (full_data['emp_nf'] == 'D')], inplace=True)
+# full_data.drop(full_data[(full_data['empflag'] == 'S') | (full_data['emp_nf'] == 'D')], inplace=True, axis=0)
 
 # only concerned about our industries and total employment
 TOTAL_EMPLOYMENT_NAICS_FLAG = '------'
@@ -73,11 +73,51 @@ for naic in full_data['naics']:
 
 industrial_prefixes = pd.Series(industrial_prefixes)
 
-print(industrial_prefixes)
-print('-----------------------------------------------------------')
-print(full_data['naics'] == TOTAL_EMPLOYMENT_NAICS_FLAG)
-
 full_data.drop(full_data[(full_data['naics'] != TOTAL_EMPLOYMENT_NAICS_FLAG) & ~industrial_prefixes].index, inplace=True, axis=0)
+
+print(full_data)
+
+def estimate_employment_if_nonexistant(row):
+    row_elem = row['empflag']
+    estimated_employment = row['emp']
+    if row_elem == np.nan:
+        return estimated_employment
+    if row_elem == 'A':
+        return 10
+    elif row_elem == 'B':
+        return 50
+    elif row_elem == 'C':
+        return 175
+    elif row_elem == 'D':
+        print("There shouldn't be a D")
+        return 250
+    elif row_elem == 'E':
+        return 375
+    elif row_elem == 'F':
+        return 750
+    elif row_elem == 'G':
+        return 1750
+    elif row_elem == 'H':
+        return 3750
+    elif row_elem == 'I':
+        return 7500
+    elif row_elem == 'J':
+        return 17500
+    elif row_elem == 'K':
+        return 37500
+    elif row_elem == 'L':
+        return 75000
+    elif row_elem == 'M':
+        # no upper bound, just double 100k
+        return 200000
+    else:
+        pass
+        # the data is withheld and stuff
+    return estimated_employment
+
+
+# now we want to guess at the class size for a given field if not given in employment numbers
+full_data['emp'] = full_data.apply(estimate_employment_if_nonexistant, axis=1)
 
 print(full_data)
 
