@@ -197,7 +197,7 @@ def county_loss_func(row):
 
     # Add - don't want one to cancel out the other
     # TODO: Test coefficients?
-    penalty = size_penalty + distribution_penalty
+    penalty = (1.0 + size_penalty) * distribution_penalty
     return penalty
 
 
@@ -206,5 +206,5 @@ exposure_employment_data["loss"] = exposure_employment_data.apply(county_loss_fu
 exposure_employment_data.sort_values(by=['loss'], inplace=True, axis=0)
 
 # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.set_option.html
-with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False):
+with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False, 'display.max_rows', 200):
     print(exposure_employment_data)
