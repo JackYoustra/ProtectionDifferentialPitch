@@ -213,3 +213,5 @@ fabric.properties
 # Editor-based Rest Client
 .idea/httpRequests
 
+# custom project stuff
+assets/

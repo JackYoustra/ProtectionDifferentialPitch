@@ -213,14 +213,37 @@ def make_summary(data_source, data_source_filename):
         penalty = (1.0 + size_penalty) * distribution_penalty
         return penalty
 
-
     exposure_employment_data["loss"] = exposure_employment_data.apply(county_loss_func, axis=1)
     # exclude all with a fitness of zero
     exposure_employment_data.sort_values(by=['loss'], inplace=True, axis=0)
 
-    # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.set_option.html
-    with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False, 'display.max_rows', 100000):
-        print(exposure_employment_data)
+    return exposure_employment_data
+
+def calcDifference(past, current, threshold=100):
+    subselection = past.head(threshold)
+    combined = subselection.merge(current, how='left', left_on=['fipstate', 'fipscty', 'ctyname'], right_on=['fipstate', 'fipscty', 'ctyname'], suffixes=('_past', '_future'), validate='1:1')
+    print(combined)
+
+    competitives = np.empty(threshold)
+    monopolies = np.empty(threshold)
+    for index, row in combined.iterrows():
+        mp = row['emp_monopoly_past']
+        if np.isnan(mp):
+            mp = 0.0000001
+        cp = row['emp_competitive_past']
+        if np.isnan(cp):
+            cp = 0.0000001
+        mf = row['emp_monopoly_future']
+        if np.isnan(mf):
+            mf = 0.0000001
+        cf = row['emp_competitive_future']
+        if np.isnan(cf):
+            cf = 0.0000001
+
+        competitives[index] = (cf - cp) / cp
+        monopolies[index] = (mf - mp) / mp
+
+    return np.mean(competitives), np.std(competitives), np.mean(monopolies), np.std(monopolies), np.cov(competitives, monopolies)
 
 
 # Make a summary of an industry given a CBP datasets thingy
@@ -234,6 +257,12 @@ COUNTY_DATA_SOURCE_2005_FILENAME = "cbp05co.zip"
 COUNTY_DATA_SOURCE_2005 = "https://www2.census.gov/programs-surveys/cbp/datasets/2005/" + COUNTY_DATA_SOURCE_2005_FILENAME + "?#"
 
 
-make_summary(COUNTY_DATA_SOURCE_2016, COUNTY_DATA_SOURCE_2016_FILENAME)
-#make_summary(COUNTY_DATA_SOURCE_2002, COUNTY_DATA_SOURCE_2002_FILENAME)
-#make_summary(COUNTY_DATA_SOURCE_2005, COUNTY_DATA_SOURCE_2005_FILENAME)
+# https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.set_option.html
+with pd.option_context('display.max_columns', None, 'display.expand_frame_repr', False, 'display.max_rows', 100000):
+    print("2016 data")
+    print(make_summary(COUNTY_DATA_SOURCE_2016, COUNTY_DATA_SOURCE_2016_FILENAME))
+    old = make_summary(COUNTY_DATA_SOURCE_2002, COUNTY_DATA_SOURCE_2002_FILENAME)
+    new = make_summary(COUNTY_DATA_SOURCE_2005, COUNTY_DATA_SOURCE_2005_FILENAME)
+
+    print("Differences")
+    print(calcDifference(old, new))
